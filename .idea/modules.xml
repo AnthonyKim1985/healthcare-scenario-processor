@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/healthcare-scenario-processor.iml" filepath="$PROJECT_DIR$/healthcare-scenario-processor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/healthcare-scenario-processor_main.iml" filepath="$PROJECT_DIR$/.idea/modules/healthcare-scenario-processor_main.iml" group="healthcare-scenario-processor" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/healthcare-scenario-processor_test.iml" filepath="$PROJECT_DIR$/.idea/modules/healthcare-scenario-processor_test.iml" group="healthcare-scenario-processor" />
+    </modules>
+  </component>
+</project>
