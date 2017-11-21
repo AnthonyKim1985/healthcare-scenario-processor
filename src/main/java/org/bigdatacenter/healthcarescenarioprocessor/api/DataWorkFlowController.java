@@ -6,6 +6,7 @@ import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.ScenarioTas
 import org.bigdatacenter.healthcarescenarioprocessor.exception.RESTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletResponse;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/workflow/api")
@@ -35,10 +38,14 @@ public class DataWorkFlowController {
     @ResponseBody
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "dataWorkFlow", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public String dataWorkFlow(@RequestBody ScenarioTask scenarioTask, HttpServletResponse httpServletResponse) {
+    public String dataWorkFlow(@RequestBody ScenarioTask scenarioTask, @RequestParam Integer dataSetUID, HttpServletResponse httpServletResponse) {
         try {
+            Map<String, Object> rabbitMQMap = new HashMap<>();
+            rabbitMQMap.put("scenarioTask", scenarioTask);
+            rabbitMQMap.put("dataSetUID", dataSetUID);
+
             synchronized (this) {
-                rabbitTemplate.convertAndSend(RabbitMQConfig.EXTRACTION_REQUEST_QUEUE, scenarioTask);
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXTRACTION_REQUEST_QUEUE, rabbitMQMap);
             }
         } catch (Exception e) {
             throw new RESTException(String.format("(threadName=%s) - Bad request (%s)", currentThreadName, e.getMessage()), httpServletResponse);
