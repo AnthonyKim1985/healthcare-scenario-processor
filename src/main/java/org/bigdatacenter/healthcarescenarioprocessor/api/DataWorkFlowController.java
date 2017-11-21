@@ -40,7 +40,7 @@ public class DataWorkFlowController {
     @RequestMapping(value = "dataWorkFlow", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public String dataWorkFlow(@RequestBody ScenarioTask scenarioTask, @RequestParam Integer dataSetUID, HttpServletResponse httpServletResponse) {
         try {
-            Map<String, Object> rabbitMQMap = new HashMap<>();
+            final Map<String, Object> rabbitMQMap = new HashMap<>();
             rabbitMQMap.put("scenarioTask", scenarioTask);
             rabbitMQMap.put("dataSetUID", dataSetUID);
 
