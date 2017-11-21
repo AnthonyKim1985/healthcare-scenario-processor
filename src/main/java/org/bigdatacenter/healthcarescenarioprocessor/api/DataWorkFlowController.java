@@ -3,6 +3,7 @@ package org.bigdatacenter.healthcarescenarioprocessor.api;
 import org.bigdatacenter.healthcarescenarioprocessor.api.caller.DataIntegrationPlatformAPICaller;
 import org.bigdatacenter.healthcarescenarioprocessor.config.RabbitMQConfig;
 import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.ScenarioTask;
+import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.WorkFlowRequest;
 import org.bigdatacenter.healthcarescenarioprocessor.exception.RESTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,14 +39,10 @@ public class DataWorkFlowController {
     @ResponseBody
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "dataWorkFlow", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public String dataWorkFlow(@RequestBody ScenarioTask scenarioTask, @RequestParam Integer dataSetUID, HttpServletResponse httpServletResponse) {
+    public String dataWorkFlow(@RequestBody WorkFlowRequest workFlowRequest, HttpServletResponse httpServletResponse) {
         try {
-            final Map<String, Object> rabbitMQMap = new HashMap<>();
-            rabbitMQMap.put("scenarioTask", scenarioTask);
-            rabbitMQMap.put("dataSetUID", dataSetUID);
-
             synchronized (this) {
-                rabbitTemplate.convertAndSend(RabbitMQConfig.EXTRACTION_REQUEST_QUEUE, rabbitMQMap);
+                rabbitTemplate.convertAndSend(RabbitMQConfig.EXTRACTION_REQUEST_QUEUE, workFlowRequest);
             }
         } catch (Exception e) {
             throw new RESTException(String.format("(threadName=%s) - Bad request (%s)", currentThreadName, e.getMessage()), httpServletResponse);
