@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,8 +40,9 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
     }
 
     @Override
-    public void runReceiver(ScenarioTask scenarioTask) {
-        final Integer dataSetUID = scenarioTask.getDataSetUID();
+    public void runReceiver(Map<String, Object> rabbitMQMap) {
+        final ScenarioTask scenarioTask = (ScenarioTask) rabbitMQMap.get("scenarioTask");
+        final Integer dataSetUID = (Integer) rabbitMQMap.get("dataSetUID");
         final List<ScenarioQuery> scenarioQueryList = scenarioTask.getScenarioQueryList();
 
         try {
