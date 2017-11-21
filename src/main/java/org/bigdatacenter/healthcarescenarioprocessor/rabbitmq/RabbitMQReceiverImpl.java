@@ -4,6 +4,7 @@ import org.bigdatacenter.healthcarescenarioprocessor.domain.extraction.DataExtra
 import org.bigdatacenter.healthcarescenarioprocessor.domain.extraction.TableCreationTask;
 import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.ScenarioQuery;
 import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.ScenarioTask;
+import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.WorkFlowRequest;
 import org.bigdatacenter.healthcarescenarioprocessor.resolver.script.ShellScriptResolver;
 import org.bigdatacenter.healthcarescenarioprocessor.service.RawDataDBService;
 import org.bigdatacenter.healthcarescenarioprocessor.util.CommonUtil;
@@ -14,7 +15,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,9 +40,9 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
     }
 
     @Override
-    public void runReceiver(Map<String, Object> rabbitMQMap) {
-        final ScenarioTask scenarioTask = (ScenarioTask) rabbitMQMap.get("scenarioTask");
-        final Integer dataSetUID = (Integer) rabbitMQMap.get("dataSetUID");
+    public void runReceiver(WorkFlowRequest workFlowRequest) {
+        final Integer dataSetUID = workFlowRequest.getDataSetUID();
+        final ScenarioTask scenarioTask = workFlowRequest.getScenarioTask();
         final List<ScenarioQuery> scenarioQueryList = scenarioTask.getScenarioQueryList();
 
         try {
