@@ -2,12 +2,10 @@ package org.bigdatacenter.healthcarescenarioprocessor.api;
 
 import org.bigdatacenter.healthcarescenarioprocessor.api.caller.DataIntegrationPlatformAPICaller;
 import org.bigdatacenter.healthcarescenarioprocessor.config.RabbitMQConfig;
-import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.ScenarioTask;
 import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.WorkFlowRequest;
 import org.bigdatacenter.healthcarescenarioprocessor.exception.RESTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,8 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletResponse;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/workflow/api")
@@ -40,12 +36,26 @@ public class DataWorkFlowController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "dataWorkFlow", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public String dataWorkFlow(@RequestBody WorkFlowRequest workFlowRequest, HttpServletResponse httpServletResponse) {
+        if (workFlowRequest == null) {
+            throw new RESTException(String.format("(dataSetUID=null / threadName=%s) - The workFlowRequest is null.", currentThreadName), httpServletResponse);
+        } else if (workFlowRequest.getRequestInfo() == null) {
+            throw new RESTException(String.format("(dataSetUID=null / threadName=%s) - The requestInfo at workFlowRequest is null.", currentThreadName), httpServletResponse);
+        } else if (workFlowRequest.getRequestInfo().getDataSetUID() == null) {
+            throw new RESTException(String.format("(dataSetUID=%d / threadName=%s) - The dataSetUID of requestInfo at workFlowRequest is null.", workFlowRequest.getRequestInfo().getDataSetUID(), currentThreadName), httpServletResponse);
+        }
+
+        final Integer dataSetUID = workFlowRequest.getRequestInfo().getDataSetUID();
+        logger.info(String.format("(dataSetUID=%d / threadName=%s) - extractionParameter: %s", dataSetUID, currentThreadName, workFlowRequest));
+
         try {
             synchronized (this) {
                 rabbitTemplate.convertAndSend(RabbitMQConfig.EXTRACTION_REQUEST_QUEUE, workFlowRequest);
             }
         } catch (Exception e) {
-            throw new RESTException(String.format("(threadName=%s) - Bad request (%s)", currentThreadName, e.getMessage()), httpServletResponse);
+            e.printStackTrace();
+            dataIntegrationPlatformAPICaller.callUpdateProcessState(dataSetUID, DataIntegrationPlatformAPICaller.PROCESS_STATE_CODE_REJECTED);
+            throw new RESTException(String.format("(dataSetUID=%d / threadName=%s) - Bad request (%s)",
+                    workFlowRequest.getRequestInfo().getDataSetUID(), currentThreadName, e.getMessage()), httpServletResponse);
         }
 
         return dateFormat.format(new Date(System.currentTimeMillis()));
