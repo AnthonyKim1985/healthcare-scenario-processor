@@ -7,6 +7,8 @@ import org.bigdatacenter.healthcarescenarioprocessor.domain.transaction.TrReques
 import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.ScenarioQuery;
 import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.ScenarioTask;
 import org.bigdatacenter.healthcarescenarioprocessor.domain.workflow.WorkFlowRequest;
+import org.bigdatacenter.healthcarescenarioprocessor.resolver.matcher.creation.CreationQueryMatcher;
+import org.bigdatacenter.healthcarescenarioprocessor.resolver.matcher.extraction.ExtractionQueryMatcher;
 import org.bigdatacenter.healthcarescenarioprocessor.resolver.script.ShellScriptResolver;
 import org.bigdatacenter.healthcarescenarioprocessor.service.RawDataDBService;
 import org.bigdatacenter.healthcarescenarioprocessor.util.CommonUtil;
@@ -18,18 +20,11 @@ import org.springframework.stereotype.Component;
 
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Component
 public class RabbitMQReceiverImpl implements RabbitMQReceiver {
     private static final Logger logger = LoggerFactory.getLogger(RabbitMQReceiverImpl.class);
     private static final String currentThreadName = Thread.currentThread().getName();
-
-    private static final Pattern headerPattern = Pattern.compile("(?<=SELECT[ ])[\\w,]+(?=[ ]FROM)");
-    private static final Pattern dbAndTableNamePattern = Pattern.compile("(?<=TABLE[ ])\\w+[.]\\w+(?=[ ]STORED)");
-
-    private static final String DATASET_NAME = "workflow";
 
     private final ShellScriptResolver shellScriptResolver;
 
@@ -37,40 +32,25 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
 
     private final RawDataDBService rawDataDBService;
 
+    private final CreationQueryMatcher creationQueryMatcher;
+
+    private final ExtractionQueryMatcher extractionQueryMatcher;
+
     @Value("${shellscript.path.home}")
     private String homePath;
 
     @Autowired
-    public RabbitMQReceiverImpl(ShellScriptResolver shellScriptResolver, DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller, RawDataDBService rawDataDBService) {
+    public RabbitMQReceiverImpl(ShellScriptResolver shellScriptResolver,
+                                DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller,
+                                RawDataDBService rawDataDBService,
+                                CreationQueryMatcher creationQueryMatcher,
+                                ExtractionQueryMatcher extractionQueryMatcher)
+    {
         this.shellScriptResolver = shellScriptResolver;
         this.dataIntegrationPlatformAPICaller = dataIntegrationPlatformAPICaller;
         this.rawDataDBService = rawDataDBService;
-    }
-
-    private String getHeader(String query) {
-        final Matcher matcher = headerPattern.matcher(query);
-
-        String header = null;
-        if (matcher.find())
-            header = matcher.group();
-
-        if (header == null)
-            throw new NullPointerException("The header is null.");
-
-        return header;
-    }
-
-    private String getDbAndTableName(String query) {
-        final Matcher matcher = dbAndTableNamePattern.matcher(query);
-
-        String dbAndTableName = null;
-        if (matcher.find())
-            dbAndTableName = matcher.group();
-
-        if (dbAndTableName == null)
-            throw new NullPointerException("The dbAndTableName is null.");
-
-        return dbAndTableName;
+        this.creationQueryMatcher = creationQueryMatcher;
+        this.extractionQueryMatcher = extractionQueryMatcher;
     }
 
     @Override
@@ -125,21 +105,24 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
                     case "creation":
                         logger.info(String.format("(dataSetUID=%d / threadName=%s) - Start table creation at Hive Query: %s", dataSetUID, currentThreadName, scenarioQuery.getQuery()));
 
-                        final TableCreationTask tableCreationTask = new TableCreationTask(CommonUtil.getHashedString(query), query);
+                        final String dbAndTableNameForCreation = creationQueryMatcher.getDbAndTableName(query);
+                        final String selectQuery = creationQueryMatcher.getSelectQuery(query);
+
+                        final TableCreationTask tableCreationTask = new TableCreationTask(dbAndTableNameForCreation, selectQuery);
                         rawDataDBService.createTable(tableCreationTask);
                         break;
                     case "extraction":
                         logger.info(String.format("(dataSetUID=%d / threadName=%s) - Start data extraction at Hive Query: %s", dataSetUID, currentThreadName, scenarioQuery.getQuery()));
 
-                        final String dbAndTableName = getDbAndTableName(query);
-                        final String dataFileName = dbAndTableName.split("[.]")[1];
-                        final String hdfsLocation = CommonUtil.getHdfsLocation(dbAndTableName, dataSetUID);
-                        final String header = getHeader(query);
+                        final String dbAndTableNameForExtraction = extractionQueryMatcher.getDbAndTableName(query);
+                        final String dataSetName = extractionQueryMatcher.getDbName(query);
+                        final String dataFileName = extractionQueryMatcher.getTableName(query);
+                        final String hdfsLocation = CommonUtil.getHdfsLocation(dbAndTableNameForExtraction, dataSetUID);
+                        final String header = extractionQueryMatcher.getHeader(query);
 
                         final DataExtractionTask dataExtractionTask = new DataExtractionTask(dataFileName, hdfsLocation, query, header);
-
                         rawDataDBService.extractData(dataExtractionTask);
-                        shellScriptResolver.runReducePartsMerger(dataSetUID, hdfsLocation, header, homePath, dataFileName, DATASET_NAME);
+                        shellScriptResolver.runReducePartsMerger(dataSetUID, hdfsLocation, header, homePath, dataFileName, dataSetName);
                         break;
                 }
 
@@ -160,11 +143,11 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
             // TODO: Archive the extracted data set and finally send the file to FTP server.
             //
             final String archiveFileName = String.format("%s_%s.tar.gz", requestInfo.getUserID(), String.valueOf(new Timestamp(System.currentTimeMillis()).getTime()));
-            final String ftpLocation = String.format("/%s/%s", requestInfo.getUserID(), DATASET_NAME);
+            final String ftpLocation = String.format("/%s/workflow", requestInfo.getUserID());
 
             final long archiveFileBeginTime = System.currentTimeMillis();
             logger.info(String.format("(dataSetUID=%d / threadName=%s) - Start archiving the extracted data set: %s", dataSetUID, currentThreadName, archiveFileName));
-            shellScriptResolver.runArchiveExtractedDataSet(dataSetUID, archiveFileName, ftpLocation, homePath, DATASET_NAME);
+            shellScriptResolver.runArchiveExtractedDataSet(dataSetUID, archiveFileName, ftpLocation, homePath, "workflow");
             logger.info(String.format("(dataSetUID=%d / threadName=%s) - Finish archiving the extracted data set: %s, Elapsed time: %d ms", dataSetUID, currentThreadName, archiveFileName, (System.currentTimeMillis() - archiveFileBeginTime)));
 
             final String ftpURI = String.format("%s/%s", ftpLocation, archiveFileName);
