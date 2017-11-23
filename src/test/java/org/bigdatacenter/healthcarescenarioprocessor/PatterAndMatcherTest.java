@@ -15,21 +15,95 @@ import static org.hamcrest.core.Is.is;
 @SpringBootTest
 public class PatterAndMatcherTest {
     @Test
-    public void testPatternAndMatcher() {
+    public void testCreationPatternAndMatcher() {
         final String query = "CREATE TABLE scenario_tmp.Result1_1511251604834 STORED AS ORC AS SELECT hhidwon,m1,m2,hhid,pid,pidwon,hpid,iflag FROM khpind.khpind_mti_2008 WHERE hhidwon=1";
 
         // db.table
-        final Pattern pattern1 = Pattern.compile("(?<=TABLE[ ])\\w+[.]\\w+(?=[ ]STORED)");
+        final Pattern pattern1 = Pattern.compile("(?<=CREATE\\sTABLE\\s)\\w+\\.\\w+(?=\\sSTORED)");
         final Matcher matcher1 = pattern1.matcher(query);
 
-        if (matcher1.find())
+        if (matcher1.find()) {
+            System.err.println(matcher1.group());
             assertThat(matcher1.group(), is("scenario_tmp.Result1_1511251604834"));
+        }
 
         // header
-        final Pattern pattern2 = Pattern.compile("(?<=SELECT[ ])[\\w,]+(?=[ ]FROM)");
+        final Pattern pattern2 = Pattern.compile("(?<=SELECT\\s)[\\w,]+(?=\\sFROM)");
         final Matcher matcher2 = pattern2.matcher(query);
 
-        if (matcher2.find())
+        if (matcher2.find()) {
+            System.err.println(matcher2.group());
             assertThat(matcher2.group(), is("hhidwon,m1,m2,hhid,pid,pidwon,hpid,iflag"));
+        }
+
+
+        // db
+        final Pattern pattern3 = Pattern.compile("(?<=CREATE\\sTABLE\\s)\\w+(?=\\.)");
+        final Matcher matcher3 = pattern3.matcher(query);
+
+        if (matcher3.find()) {
+            System.err.println(matcher3.group());
+            assertThat(matcher3.group(), is("scenario_tmp"));
+        }
+
+
+        // table
+        final Pattern pattern4 = Pattern.compile("(?<=CREATE\\sTABLE\\s\\w{1,128}\\.)\\w+");
+        final Matcher matcher4 = pattern4.matcher(query);
+
+        if (matcher4.find()) {
+            System.err.println(matcher4.group());
+            assertThat(matcher4.group(), is("Result1_1511251604834"));
+        }
+
+        // select
+        final Pattern pattern5 = Pattern.compile("(?<=STORED\\sAS\\sORC\\sAS\\s)\\w.+");
+        final Matcher matcher5 = pattern5.matcher(query);
+
+        if (matcher5.find()) {
+            System.err.println(matcher5.group());
+            assertThat(matcher5.group(), is("SELECT hhidwon,m1,m2,hhid,pid,pidwon,hpid,iflag FROM khpind.khpind_mti_2008 WHERE hhidwon=1"));
+        }
+    }
+
+    @Test
+    public void testExtractionPatternAndMatcher() {
+        final String query = "SELECT hhidwon,m1,m2,hhid,pid,pidwon,hpid,iflag FROM workflow.Result1_1511417255364 WHERE";
+
+        // db.table
+        final Pattern pattern1 = Pattern.compile("(?<=FROM\\s)[\\w.]+");
+        final Matcher matcher1 = pattern1.matcher(query);
+
+        if (matcher1.find()) {
+            System.err.println(matcher1.group());
+            assertThat(matcher1.group(), is("workflow.Result1_1511417255364"));
+        }
+
+        // header
+        final Pattern pattern2 = Pattern.compile("(?<=SELECT\\s)[\\w,]+(?=\\sFROM)");
+        final Matcher matcher2 = pattern2.matcher(query);
+
+        if (matcher2.find()) {
+            System.err.println(matcher2.group());
+            assertThat(matcher2.group(), is("hhidwon,m1,m2,hhid,pid,pidwon,hpid,iflag"));
+        }
+
+        // db
+        final Pattern pattern3 = Pattern.compile("(?<=FROM\\s)\\w+(?=\\.)");
+        final Matcher matcher3 = pattern3.matcher(query);
+
+        if (matcher3.find()) {
+            System.err.println(matcher3.group());
+            assertThat(matcher3.group(), is("workflow"));
+        }
+
+        // table
+        final Pattern pattern4 = Pattern.compile("(?<=FROM\\s\\w{1,128}\\.)\\w+");
+        final Matcher matcher4 = pattern4.matcher(query);
+
+        if (matcher4.find()) {
+            System.err.println(matcher4.group());
+            assertThat(matcher4.group(), is("Result1_1511417255364"));
+        }
     }
 }
