@@ -106,4 +106,17 @@ public class PatterAndMatcherTest {
             assertThat(matcher4.group(), is("Result1_1511417255364"));
         }
     }
+
+    @Test
+    public void testSelection() {
+        final String query = "SELECT L.person_id,L.sex,L.age_group,L.sido,L.bp_high,L.bp_lwst,L.ctrb_pt_type_cd,R.trt_org_tp,R.person_id AS person_id_2008 FROM workflow.Result4_1512350236080 L LEFT JOIN workflow.Result7_1512350875214 R ON L.person_id = R.person_id";
+
+        final Pattern headerPattern = Pattern.compile("(?<=SELECT\\s)[\\w,.]+(?=\\AS)");
+        final Matcher matcher = headerPattern.matcher(query);
+
+        if (matcher.find()) {
+            System.err.println(matcher.group());
+            assertThat(matcher.group(), is("Result1_1511417255364"));
+        }
+    }
 }
