@@ -130,6 +130,7 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
                 logger.info(String.format("(dataSetUID=%d / threadName=%s) - Finish Hive Query: %s, Elapsed time: %d ms", dataSetUID, currentThreadName, scenarioQuery, queryEndTime));
             }
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e.getMessage());
         }
     }
@@ -153,6 +154,7 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
             final String ftpURI = String.format("%s/%s", ftpLocation, archiveFileName);
             dataIntegrationPlatformAPICaller.callCreateFtpInfo(requestInfo.getDataSetUID(), requestInfo.getUserID(), ftpURI);
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e.getMessage());
         }
     }
